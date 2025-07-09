@@ -1,5 +1,5 @@
 import streamlit as st
-import openai
+from openai import OpenAI
 from docx import Document
 from io import BytesIO
 import base64
@@ -7,18 +7,18 @@ import tempfile
 import os
 
 # ========== CONFIGURATION ==========
-openai.api_key = st.secrets["openai_api_key"]  # Or set directly: openai.api_key = "your-api-key"
+client = OpenAI(api_key=st.secrets["openai_api_key"])
 
 # ========== HELPER FUNCTIONS ==========
-def generate_points(jd_text, client, duration):
+def generate_points(jd_text, client_name, duration):
     prompt = f"""
-    Based on the following Job Description (JD), generate 3-5 resume bullet points for a candidate who worked at {client} from {duration}. 
+    Based on the following Job Description (JD), generate 3-5 resume bullet points for a candidate who worked at {client_name} from {duration}. 
     Keep them tailored, keyword-rich, and formatted for a professional resume.
 
     JD:
     {jd_text}
     """
-    response = openai.ChatCompletion.create(
+    response = client.chat.completions.create(
         model="gpt-4",
         messages=[{"role": "user", "content": prompt}]
     )
@@ -58,23 +58,23 @@ st.markdown("Upload your resume and job description, and get a custom-tailored r
 jd_text = st.text_area("Paste Job Description (JD)")
 resume_file = st.file_uploader("Upload your current resume (.docx)", type=["docx"])
 
-client = st.text_input("Client Name (e.g., Cisco)")
+client_name = st.text_input("Client Name (e.g., Cisco)")
 duration = st.text_input("Duration (e.g., Aug 2021 – Sep 2023)")
 
 if st.button("✨ Generate Updated Resume"):
-    if not all([jd_text, resume_file, client, duration]):
+    if not all([jd_text, resume_file, client_name, duration]):
         st.warning("Please provide all inputs: JD, resume, client, and duration.")
     else:
         with st.spinner("Generating resume points and updating your resume..."):
             try:
                 # Step 1: Generate points
-                points = generate_points(jd_text, client, duration)
+                points = generate_points(jd_text, client_name, duration)
 
                 # Step 2: Update resume
-                updated_doc, found = insert_points_to_resume(resume_file, client, points)
+                updated_doc, found = insert_points_to_resume(resume_file, client_name, points)
 
                 if not found:
-                    st.warning(f"Could not find the section for '{client}' in your resume. Please check formatting.")
+                    st.warning(f"Could not find the section for '{client_name}' in your resume. Please check formatting.")
                 else:
                     # Step 3: Export as DOCX
                     docx_io = BytesIO()
